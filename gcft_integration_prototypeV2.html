@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GCFT Platform · dMRV Partner Integration Suite</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter','system-ui','sans-serif'],
+          mono: ['JetBrains Mono','ui-monospace','monospace']
+        }
+      }
+    }
+  };
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', sans-serif; background: #f4f6f9; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #e2e8f0; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+
+  .glow:focus { outline: none; border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.15); }
+  .pulse-dot { animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.55;transform:scale(0.85);} }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: #e2e8f0; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #10b981; cursor: pointer; border: 3px solid #ffffff; box-shadow: 0 1px 3px rgba(15,23,42,0.2), 0 0 0 1px #10b981; transition: transform 0.15s; }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.12); }
+
+  .tab-active { background: #ffffff; color: #047857; border-color: #10b981; font-weight: 700; }
+  .fade-in { animation: fade .3s ease; }
+  @keyframes fade { from{opacity:0;transform:translateY(4px);} to{opacity:1;transform:translateY(0);} }
+
+  .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 4px 12px rgba(15,23,42,0.04); }
+  .code-light { background: #f8fafc; border: 1px solid #e2e8f0; color: #0f172a; border-radius: 10px; }
+  #intensityBar { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+
+  /* ─── Tooltip system ─── */
+  .tip-anchor { position: relative; display: inline-flex; align-items: center; }
+  .tip-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #e0f2fe; color: #0369a1;
+    font-size: 10px; font-weight: 800; cursor: help;
+    margin-left: 6px; transition: all 0.15s;
+    border: 1px solid #bae6fd;
+  }
+  .tip-icon:hover { background: #bae6fd; transform: scale(1.1); }
+
+  #floatingTip {
+    position: fixed; z-index: 9999; max-width: 320px;
+    background: #0f172a; color: #f1f5f9;
+    padding: 12px 14px; border-radius: 10px;
+    font-size: 12px; line-height: 1.55;
+    box-shadow: 0 10px 32px rgba(15,23,42,0.35);
+    pointer-events: none; opacity: 0; transition: opacity 0.15s;
+    border: 1px solid #1e293b;
+  }
+  #floatingTip.show { opacity: 1; }
+  #floatingTip .tip-title { font-weight: 800; color: #6ee7b7; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
+  #floatingTip .tip-body { color: #cbd5e1; }
+
+  /* ─── Glossary ─── */
+  .glossary-item { border-left: 3px solid transparent; transition: all 0.15s; }
+  .glossary-item:hover { border-left-color: #10b981; background: #f8fafc; }
+
+  /* ─── Investor Suite ─── */
+  .metric-glow { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 2px solid #6ee7b7; }
+  .metric-glow-blue { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #93c5fd; }
+  .metric-glow-amber { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 2px solid #fcd34d; }
+  .metric-glow-purple { background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border: 2px solid #c4b5fd; }
+
+  /* ─── Compliance checklist ─── */
+  .check-pass { color: #047857; }
+  .check-pass-bg { background: #ecfdf5; border-color: #a7f3d0; }
+  .check-partial { color: #b45309; }
+  .check-partial-bg { background: #fffbeb; border-color: #fde68a; }
+  .check-pending { color: #64748b; }
+  .check-pending-bg { background: #f1f5f9; border-color: #cbd5e1; }
+
+  /* ─── Impact cards ─── */
+  .impact-card { transition: transform 0.2s, box-shadow 0.2s; }
+  .impact-card:hover { transform: translateY(-3px); box-shadow: 0 12px 24px rgba(15,23,42,0.08); }
+
+  /* ─── Search ─── */
+  .search-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 12px center; background-size: 16px; padding-left: 38px; }
+
+  @media (max-width: 900px) {
+    .mobile-hide { display: none; }
+  }
+</style>
+</head>
+<body class="bg-[#f4f6f9] text-slate-900 min-h-screen flex flex-col antialiased">
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+    <div class="flex items-center gap-3">
+      <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white w-11 h-11 rounded-xl font-black text-lg flex items-center justify-center tracking-wider shadow-md shadow-emerald-500/25">GCFT</div>
+      <div>
+        <h1 class="text-base font-bold tracking-tight text-slate-900">dMRV Partner Integration Suite</h1>
+        <p class="text-[11px] text-slate-500">Automated Waste-to-Energy Asset Ledger · v2.0.0</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full text-[11px] text-emerald-700 font-semibold">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+        API Gateway: Live
+      </span>
+      <span class="hidden sm:inline text-[11px] text-slate-400 mono">Pilot: Nov 2026</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <nav class="max-w-7xl mx-auto px-6 flex gap-1 border-t border-slate-200 bg-slate-50 overflow-x-auto">
+    <button data-tab="sandbox" class="tab-btn tab-active whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-emerald-600 transition">Sandbox</button>
+    <button data-tab="investor" class="tab-btn whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-emerald-600 transition">Investor Suite</button>
+    <button data-tab="compliance" class="tab-btn whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-emerald-600 transition">Compliance</button>
+    <button data-tab="impact" class="tab-btn whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-emerald-600 transition">Impact</button>
+    <button data-tab="docs" class="tab-btn whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-emerald-600 transition">Docs</button>
+    <button data-tab="method" class="tab-btn whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-emerald-600 transition">Methodology</button>
+    <button data-tab="glossary" class="tab-btn whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-emerald-600 transition">Glossary</button>
+  </nav>
+</header>
+
+<!-- ═══════════════════════════ MAIN ═══════════════════════════ -->
+<main class="flex-grow max-w-7xl mx-auto w-full px-6 py-6">
+
+  <!-- ═══════════ TAB: SANDBOX ═══════════ -->
+  <section id="tab-sandbox" class="tab-panel grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <div class="lg:col-span-5 space-y-5">
+      <!-- Partner -->
+      <div class="card p-5">
+        <h2 class="text-[11px] font-bold text-emerald-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <span class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black">1</span>
+          Target Partner Entity
+          <span class="tip-icon" data-tip-title="Partner Selection" data-tip="Choose a facility from the active pipeline. Each partner has pre-loaded telemetry baselines reflecting their operational scale. Switch between community-scale (COSMOS Haiti) and industrial-scale (Archaea Fort Worth) to see how the platform scales.">?</span>
+        </h2>
+        <label class="block">
+          <span class="text-[11px] text-slate-500 block mb-2 font-medium">Active Pipeline Infrastructure</span>
+          <select id="partnerSelect" class="glow w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition hover:border-slate-400">
+            <option value="sargas">SarGas Limited — Grenada / Regional SIDS</option>
+            <option value="caribshare">CaribShare Biogas — Jamaica / Hospitality</option>
+            <option value="synthica">Synthica Energy — San Antonio / Industrial Food Waste</option>
+            <option value="archaea">Archaea Energy — Fort Worth / Municipal Landfill RNG</option>
+            <option value="cosmos">COSMOS Solution — Southern Haiti / Community Biogas</option>
+          </select>
+        </label>
+        <div class="mt-4 grid grid-cols-2 gap-3 text-[11px]">
+          <div class="bg-slate-50 rounded-lg p-2.5 border border-slate-200">
+            <div class="text-slate-500 uppercase tracking-wider font-semibold mb-0.5 text-[10px]">Partner ID</div>
+            <div id="partnerIdBadge" class="mono text-emerald-700 font-bold text-xs">SARGAS-GRN-01</div>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-2.5 border border-slate-200">
+            <div class="text-slate-500 uppercase tracking-wider font-semibold mb-0.5 text-[10px]">Location</div>
+            <div id="partnerLocBadge" class="text-slate-800 font-medium text-xs truncate">Gros Islet, SLU</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telemetry -->
+      <div class="card p-5">
+        <h2 class="text-[11px] font-bold text-emerald-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <span class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black">2</span>
+          Facility Telemetry
+          <span class="tip-icon" data-tip-title="Telemetry Simulation" data-tip="Adjust live operating parameters. The engine recalculates tCO₂e and revenue in real time using IPCC AR5 constants. In production, these values arrive via SCADA/PLC webhook every 15 minutes.">?</span>
+        </h2>
+
+        <div class="space-y-5">
+          <div>
+            <div class="flex justify-between items-baseline mb-2">
+              <span class="text-xs text-slate-600 font-medium">Biogas Flow (m³ / day)</span>
+              <span id="flowVal" class="mono text-emerald-700 font-bold text-sm">12,500</span>
+            </div>
+            <input type="range" id="flowInput" min="1000" max="50000" step="500" value="12500" class="w-full">
+          </div>
+          <div>
+            <div class="flex justify-between items-baseline mb-2">
+              <span class="text-xs text-slate-600 font-medium">Methane (CH₄) Concentration</span>
+              <span id="ch4Val" class="mono text-emerald-700 font-bold text-sm">62%</span>
+            </div>
+            <input type="range" id="ch4Input" min="45" max="85" step="1" value="62" class="w-full">
+          </div>
+          <div>
+            <div class="flex justify-between items-baseline mb-2">
+              <span class="text-xs text-slate-600 font-medium">Destruction Efficiency</span>
+              <span id="effVal" class="mono text-emerald-700 font-bold text-sm">98.5%</span>
+            </div>
+            <input type="range" id="effInput" min="90" max="100" step="0.1" value="98.5" class="w-full">
+          </div>
+        </div>
+
+        <div class="mt-6 pt-5 border-t border-slate-200 flex gap-2">
+          <button id="webhookBtn" class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-lg shadow-md shadow-emerald-500/20 active:scale-[0.98] transition text-xs uppercase tracking-wider">
+            ⚡ Fire Ingestion Webhook
+          </button>
+          <button id="autoBtn" class="bg-white border border-slate-300 hover:border-emerald-500 hover:text-emerald-700 text-slate-700 font-bold py-3 px-4 rounded-lg active:scale-[0.98] transition text-xs uppercase tracking-wider">▶ Auto</button>
+        </div>
+      </div>
+
+      <!-- Session Ledger -->
+      <div class="card p-5">
+        <h2 class="text-[11px] font-bold text-emerald-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <span class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black">3</span>
+          Cumulative Session Ledger
+        </h2>
+        <div class="space-y-3 text-xs">
+          <div class="flex justify-between items-center py-2.5 border-b border-slate-100">
+            <span class="text-slate-500 font-medium">Verifications fired</span>
+            <span id="cumCount" class="mono text-slate-900 font-bold">0</span>
+          </div>
+          <div class="flex justify-between items-center py-2.5 border-b border-slate-100">
+            <span class="text-slate-500 font-medium">Total tCO₂e logged</span>
+            <span id="cumCredits" class="mono text-emerald-700 font-bold">0.00</span>
+          </div>
+          <div class="flex justify-between items-center py-2.5">
+            <span class="text-slate-500 font-medium">Total notional value</span>
+            <span id="cumRevenue" class="mono text-sky-700 font-bold">$0.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-7 space-y-5">
+      <!-- Metrics -->
+      <div class="grid grid-cols-3 gap-4">
+        <div class="card p-4 text-center">
+          <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1.5">CH₄ Destroyed</p>
+          <p id="ledgerMethane" class="mono text-base font-bold text-slate-900">0 m³</p>
+        </div>
+        <div class="metric-glow rounded-2xl p-4 text-center shadow-sm">
+          <p class="text-[10px] text-emerald-700 uppercase tracking-widest font-bold mb-1.5">tCO₂e / Day</p>
+          <p id="ledgerCredits" class="mono text-2xl font-black text-emerald-700">0.00</p>
+        </div>
+        <div class="metric-glow-blue rounded-2xl p-4 text-center shadow-sm">
+          <p class="text-[10px] text-sky-700 uppercase tracking-widest font-bold mb-1.5">Est. Daily Value</p>
+          <p id="ledgerRevenue" class="mono text-base font-bold text-sky-700">$0.00</p>
+        </div>
+      </div>
+
+      <!-- Intensity -->
+      <div class="card p-5">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+            Credit Production Intensity
+            <span class="tip-icon" data-tip-title="Production Intensity" data-tip="Visual gauge of daily tCO₂e output relative to a 300-tonne ceiling. Moving into the green-sky transition zone indicates industrial-grade production suitable for premium placement pools.">?</span>
+          </h3>
+          <span class="text-[10px] mono text-slate-400">@ $25/tCO₂e</span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
+          <div id="intensityBar" class="h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-sky-400" style="width:0%"></div>
+        </div>
+        <div class="flex justify-between mt-2 text-[10px] text-slate-400 mono">
+          <span>0 t</span><span>100 t</span><span>200 t</span><span>300 t</span>
+        </div>
+      </div>
+
+      <!-- JSON Payload -->
+      <div class="card flex flex-col" style="min-height:300px;">
+        <div class="flex flex-wrap justify-between items-center gap-2 p-5 pb-3">
+          <h3 class="text-[11px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+            API Transmission Payload
+            <span class="tip-icon" data-tip-title="Webhook Payload" data-tip="Fully-formed JSON transmitted to /api/v1/ingest with SHA-256 signature. Production payloads sign with partner-specific private keys and are verified against the registry before ledger commit.">?</span>
+          </h3>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] mono bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">POST /api/v1/ingest</span>
+            <button id="copyBtn" class="text-[10px] bg-white hover:bg-slate-50 border border-slate-300 hover:border-emerald-500 text-slate-700 hover:text-emerald-700 px-2.5 py-1 rounded transition font-semibold">Copy</button>
+            <button id="downloadBtn" class="text-[10px] bg-white hover:bg-slate-50 border border-slate-300 hover:border-emerald-500 text-slate-700 hover:text-emerald-700 px-2.5 py-1 rounded transition font-semibold">Download</button>
+          </div>
+        </div>
+        <div class="flex-grow mx-5 mb-5 code-light p-4 overflow-auto">
+          <pre id="jsonPayload" class="mono text-[11px] text-slate-800 leading-relaxed whitespace-pre"></pre>
+        </div>
+      </div>
+
+      <!-- Terminal -->
+      <div class="card overflow-hidden">
+        <div class="flex justify-between items-center px-4 py-3 border-b border-slate-200 bg-slate-50">
+          <h3 class="text-[11px] font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+            dMRV Audit Ledger Stream
+          </h3>
+          <button id="clearBtn" class="text-[10px] text-slate-400 hover:text-emerald-600 underline transition">Clear</button>
+        </div>
+        <div id="terminalConsole" class="p-3 mono text-[11px] overflow-y-auto space-y-1" style="height:180px; background:#f8fafc;">
+          <div class="text-slate-400">[System Init] Standing by for secure partner webhook token…</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ TAB: INVESTOR SUITE ═══════════ -->
+  <section id="tab-investor" class="tab-panel hidden fade-in space-y-6">
+
+    <!-- Hero Metrics -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="metric-glow rounded-2xl p-5 text-center">
+        <p class="text-[10px] text-emerald-700 uppercase tracking-widest font-bold mb-2 flex items-center justify-center gap-1">
+          Internal Rate of Return
+          <span class="tip-icon" data-tip-title="Internal Rate of Return" data-tip="The discount rate at which the net present value of all future cash flows equals zero. An IRR above 15% is generally considered strong for climate-tech infrastructure in emerging markets.">?</span>
+        </p>
+        <p id="invIRR" class="mono text-3xl font-black text-emerald-700">—</p>
+        <p class="text-[10px] text-emerald-600 font-semibold mt-1">Base Case · 7-year hold</p>
+      </div>
+      <div class="metric-glow-blue rounded-2xl p-5 text-center">
+        <p class="text-[10px] text-sky-700 uppercase tracking-widest font-bold mb-2 flex items-center justify-center gap-1">
+          Net Present Value
+          <span class="tip-icon" data-tip-title="Net Present Value" data-tip="Sum of all future cash flows discounted to present value at the assumed cost of capital (default 12%). Positive NPV indicates value creation.">?</span>
+        </p>
+        <p id="invNPV" class="mono text-3xl font-black text-sky-700">—</p>
+        <p class="text-[10px] text-sky-600 font-semibold mt-1">$M · 12% discount</p>
+      </div>
+      <div class="metric-glow-amber rounded-2xl p-5 text-center">
+        <p class="text-[10px] text-amber-700 uppercase tracking-widest font-bold mb-2 flex items-center justify-center gap-1">
+          Payback Period
+          <span class="tip-icon" data-tip-title="Payback Period" data-tip="Number of years required to recover initial capital investment from cumulative cash flows. Shorter is better; under 4 years is attractive for infrastructure.">?</span>
+        </p>
+        <p id="invPayback" class="mono text-3xl font-black text-amber-700">—</p>
+        <p class="text-[10px] text-amber-600 font-semibold mt-1">Years to breakeven</p>
+      </div>
+      <div class="metric-glow-purple rounded-2xl p-5 text-center">
+        <p class="text-[10px] text-purple-700 uppercase tracking-widest font-bold mb-2 flex items-center justify-center gap-1">
+          MOIC
+          <span class="tip-icon" data-tip-title="Multiple on Invested Capital" data-tip="Total cash returned divided by initial capital invested. A 3.0× MOIC over 7 years implies the investment triples, equivalent to roughly 17% IRR.">?</span>
+        </p>
+        <p id="invMOIC" class="mono text-3xl font-black text-purple-700">—</p>
+        <p class="text-[10px] text-purple-600 font-semibold mt-1">× on invested capital</p>
+      </div>
+    </div>
+
+    <!-- 5-Year Projection Chart -->
+    <div class="card p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          5-Year Cash Flow Projection
+          <span class="tip-icon" data-tip-title="Cash Flow Model" data-tip="Projected revenue, OpEx, and net cash flow across 5 years based on industry-standard assumptions for RNG/biogas facilities. Figures adjust dynamically if you change the assumptions below.">?</span>
+        </h3>
+        <span class="text-[10px] mono text-slate-400">USD Thousands</span>
+      </div>
+      <div class="h-72"><canvas id="chartCashflow"></canvas></div>
+    </div>
+
+    <!-- Assumptions + Market Sizing -->
+    <div class="grid lg:grid-cols-2 gap-6">
+      <!-- Assumptions -->
+      <div class="card p-6">
+        <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+          Investment Assumptions (Adjustable)
+          <span class="tip-icon" data-tip-title="Live Model Inputs" data-tip="Adjust key assumptions and the IRR / NPV / MOIC metrics recalculate instantly. Sensitivity analysis in real time.">?</span>
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <span class="text-xs text-slate-600">Initial Capital (USD M)</span>
+              <span id="asmCapitalVal" class="mono text-emerald-700 font-bold text-xs">$8.2M</span>
+            </div>
+            <input type="range" id="asmCapital" min="2" max="25" step="0.5" value="8.2" class="w-full">
+          </div>
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <span class="text-xs text-slate-600">Annual Revenue Growth</span>
+              <span id="asmGrowthVal" class="mono text-emerald-700 font-bold text-xs">28%</span>
+            </div>
+            <input type="range" id="asmGrowth" min="5" max="50" step="1" value="28" class="w-full">
+          </div>
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <span class="text-xs text-slate-600">Operating Margin</span>
+              <span id="asmMarginVal" class="mono text-emerald-700 font-bold text-xs">42%</span>
+            </div>
+            <input type="range" id="asmMargin" min="15" max="70" step="1" value="42" class="w-full">
+          </div>
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <span class="text-xs text-slate-600">Carbon Credit Price (USD/t)</span>
+              <span id="asmPriceVal" class="mono text-emerald-700 font-bold text-xs">$25.00</span>
+            </div>
+            <input type="range" id="asmPrice" min="8" max="50" step="0.5" value="25" class="w-full">
+          </div>
+        </div>
+      </div>
+
+      <!-- TAM/SAM/SOM -->
+      <div class="card p-6">
+        <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+          Market Sizing — TAM / SAM / SOM
+          <span class="tip-icon" data-tip-title="Market Sizing" data-tip="TAM = total global market. SAM = serviceable available market (Caribbean + Latin America). SOM = serviceable obtainable market (near-term achievable share).">?</span>
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between mb-1">
+              <span class="text-xs font-bold text-slate-700">TAM · Global dMRV Market</span>
+              <span class="text-xs mono font-bold text-slate-900">$2.4B</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded h-3 overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400" style="width:100%"></div>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1">Global carbon MRV market · projected 2030</p>
+          </div>
+          <div>
+            <div class="flex justify-between mb-1">
+              <span class="text-xs font-bold text-slate-700">SAM · Caribbean + LatAm</span>
+              <span class="text-xs mono font-bold text-slate-900">$340M</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded h-3 overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-sky-500 to-sky-400" style="width:14%"></div>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1">Region with Article 6 activity + RNG infrastructure</p>
+          </div>
+          <div>
+            <div class="flex justify-between mb-1">
+              <span class="text-xs font-bold text-slate-700">SOM · Near-Term (24 mo)</span>
+              <span class="text-xs mono font-bold text-slate-900">$18M</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded h-3 overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-amber-500 to-amber-400" style="width:5%"></div>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1">12–18 facilities across 4 countries</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparables -->
+    <div class="card p-6">
+      <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+        Comparable Transactions
+        <span class="tip-icon" data-tip-title="Market Comparables" data-tip="Recent comparable transactions in the carbon MRV and RNG space. Used by investors to benchmark valuation multiples and deal structures.">?</span>
+      </h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="bg-slate-50 text-slate-600 uppercase tracking-wider text-[10px]">
+              <th class="text-left py-3 px-3 font-bold border-b border-slate-200">Company</th>
+              <th class="text-left py-3 px-3 font-bold border-b border-slate-200">Sector</th>
+              <th class="text-left py-3 px-3 font-bold border-b border-slate-200">Stage</th>
+              <th class="text-right py-3 px-3 font-bold border-b border-slate-200">Raised</th>
+              <th class="text-right py-3 px-3 font-bold border-b border-slate-200">Valuation</th>
+              <th class="text-left py-3 px-3 font-bold border-b border-slate-200">Lead Investor</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr class="hover:bg-slate-50">
+              <td class="py-3 px-3 font-semibold text-slate-800">Sistema.bio</td>
+              <td class="py-3 px-3 text-slate-600">Biogas + Carbon</td>
+              <td class="py-3 px-3"><span class="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold">Series C</span></td>
+              <td class="py-3 px-3 text-right mono font-semibold">$53M</td>
+              <td class="py-3 px-3 text-right mono text-slate-600">—</td>
+              <td class="py-3 px-3 text-slate-600">BNP Paribas, BII</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="py-3 px-3 font-semibold text-slate-800">Pachama</td>
+              <td class="py-3 px-3 text-slate-600">Forest MRV</td>
+              <td class="py-3 px-3"><span class="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold">Series B</span></td>
+              <td class="py-3 px-3 text-right mono font-semibold">$79M</td>
+              <td class="py-3 px-3 text-right mono text-slate-600">$1.4B</td>
+              <td class="py-3 px-3 text-slate-600">Union Square</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="py-3 px-3 font-semibold text-slate-800">Sylvera</td>
+              <td class="py-3 px-3 text-slate-600">Carbon Ratings</td>
+              <td class="py-3 px-3"><span class="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold">Series A</span></td>
+              <td class="py-3 px-3 text-right mono font-semibold">$32M</td>
+              <td class="py-3 px-3 text-right mono text-slate-600">—</td>
+              <td class="py-3 px-3 text-slate-600">Index Ventures</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="py-3 px-3 font-semibold text-slate-800">SustainCERT</td>
+              <td class="py-3 px-3 text-slate-600">MRV Platform</td>
+              <td class="py-3 px-3"><span class="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold">Growth</span></td>
+              <td class="py-3 px-3 text-right mono font-semibold">—</td>
+              <td class="py-3 px-3 text-right mono text-slate-600">—</td>
+              <td class="py-3 px-3 text-slate-600">Private</td>
+            </tr>
+            <tr class="hover:bg-slate-50 bg-emerald-50/30">
+              <td class="py-3 px-3 font-semibold text-emerald-800">GCFT Platform (target)</td>
+              <td class="py-3 px-3 text-emerald-700">dMRV + Carbon</td>
+              <td class="py-3 px-3"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">Seed → Series A</span></td>
+              <td class="py-3 px-3 text-right mono font-bold text-emerald-700">$3.5M</td>
+              <td class="py-3 px-3 text-right mono text-slate-600">$18M (target)</td>
+              <td class="py-3 px-3 text-emerald-700 font-semibold">Halcyon Advisors</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ TAB: COMPLIANCE ═══════════ -->
+  <section id="tab-compliance" class="tab-panel hidden fade-in space-y-6">
+
+    <!-- ICVCM Scorecard -->
+    <div class="card p-6">
+      <div class="flex justify-between items-center mb-5">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          ICVCM Core Carbon Principles — Alignment Scorecard
+          <span class="tip-icon" data-tip-title="ICVCM CCP" data-tip="The Integrity Council for the Voluntary Carbon Market (ICVCM) published 10 Core Carbon Principles (CCPs) defining high-integrity credits. Alignment with these is mandatory for premium pricing and institutional buyer acceptance.">?</span>
+        </h3>
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-slate-500">Overall:</span>
+          <span class="text-lg font-black text-emerald-600">9 / 10</span>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-3">
+        <div class="check-pass-bg border-2 rounded-lg p-3.5 flex items-start gap-3">
+          <span class="text-lg check-pass font-bold">✓</span>
+          <div>
+            <div class="text-xs font-bold text-emerald-800">1. Effective Governance</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">Independent board, transparent decision-making, grievance mechanism.</div>
+          </div>
+        </div>
+        <div class="check-pass-bg border-2 rounded-lg p-3.5 flex items-start gap-3">
+          <span class="text-lg check-pass font-bold">✓</span>
+          <div>
+            <div class="text-xs font-bold text-emerald-800">2. Tracking</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">Unique serial numbers, registry integration (Verra, Gold Standard, Puro).</div>
+          </div>
+        </div>
+        <div class="check-pass-bg border-2 rounded-lg p-3.5 flex items-start gap-3">
+          <span class="text-lg check-pass font-bold">✓</span>
+          <div>
+            <div class="text-xs font-bold text-emerald-800">3. Transparency</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">Public registry, published methodologies, open audit trail.</div>
+          </div>
+        </div>
+        <div class="check-pass-bg border-2 rounded-lg p-3.5 flex items-start gap-3">
+          <span class="text-lg check-pass font-bold">✓</span>
+          <div>
+            <div class="text-xs font-bold text-emerald-800">4. Robust Independent Third-Party Validation &amp; Verification</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">Accredited VVB pathway, immutable audit chain, sensor cross-validation.</div>
+          </div>
+        </div>
+        <div class="check-pass-bg border-2 rounded-lg p-3.5 flex items-start gap-3">
+          <span class="text-lg check-pass font-bold">✓</span>
+          <div>
+            <div class="text-xs font-bold text-emerald-800">5. Additionally</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">Baseline scenario, financial additionality, common practice analysis.</div>
+          </div>
+        </div>
+        <div class="check-pass-bg border-2 rounded-lg p-3.5 flex items-start gap-3">
+          <span class="text-lg check-pass font-bold">✓</span>
+          <div>
+            <div class="text-xs font-bold text-emerald-800">6. Permanence</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">15% buffer pool, 30-year monitoring commitment, reversal risk mitigation.</div>
+          </div>
+        </div>
+        <div class="check-pass-bg border-2 rounded-lg p-3.5 flex items-start gap-3">
+          <span class="text-lg check-pass font-bold">✓</span>
+          <div>
+            <div class="text-xs font-bold text-emerald-800">7. Robust Quantification</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">IPCC AR5 constants, conservative assumptions, uncertainty quantified ±4.2%.</div>
+          </div>
+        </div>
+        <div class="check-pass-bg border-2 rounded-lg p-3.5 flex items-start gap-3">
+          <span class="text-lg check-pass font-bold">✓</span>
+          <div>
+            <div class="text-xs font-bold text-emerald-800">8. No Double Counting</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">Corresponding Adjustment ledger, Article 6.2 compliance, national registry sync.</div>
+          </div>
+        </div>
+        <div class="check-pass-bg border-2 rounded-lg p-3.5 flex items-start gap-3">
+          <span class="text-lg check-pass font-bold">✓</span>
+          <div>
+            <div class="text-xs font-bold text-emerald-800">9. Sustainable Development Benefits &amp; Safeguards</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">SDG mapping, FPIC compliance, grievance mechanism, gender action plan.</div>
+          </div>
+        </div>
+        <div class="check-partial-bg border-2 rounded-lg p-3.5 flex items-start gap-3">
+          <span class="text-lg check-partial font-bold">◐</span>
+          <div>
+            <div class="text-xs font-bold text-amber-800">10. Transition to Net Zero</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">Alignment with host-country net-zero pathway — in progress with Haiti NDA.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Article 6 + Registry -->
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="card p-6">
+        <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+          Article 6.2 Readiness
+          <span class="tip-icon" data-tip-title="Article 6.2" data-tip="Article 6.2 of the Paris Agreement allows bilateral cooperation between countries for ITMO (Internationally Transferred Mitigation Outcomes). Host countries authorize each transfer and apply a Corresponding Adjustment to avoid double counting.">?</span>
+        </h3>
+        <div class="space-y-3 text-xs">
+          <div class="flex items-center justify-between py-2 border-b border-slate-100">
+            <span class="text-slate-600">Host Country Authorization (LoA)</span>
+            <span class="check-pass font-bold">✓ Ready</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-slate-100">
+            <span class="text-slate-600">Corresponding Adjustment Process</span>
+            <span class="check-pass font-bold">✓ Operational</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-slate-100">
+            <span class="text-slate-600">Registry Account (International)</span>
+            <span class="check-pass font-bold">✓ Verified</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-slate-100">
+            <span class="text-slate-600">Sustainable Development Report</span>
+            <span class="check-pass font-bold">✓ Submitted</span>
+          </div>
+          <div class="flex items-center justify-between py-2">
+            <span class="text-slate-600">Bilateral Partner Match</span>
+            <span class="check-partial font-bold">◐ 3 in progress</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-6">
+        <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+          Registry Integration Status
+          <span class="tip-icon" data-tip-title="Registry Connectivity" data-tip="Direct API integrations with the three major carbon registries. Credits flow from VVB verification to serialized registry entry without manual data entry.">?</span>
+        </h3>
+        <div class="space-y-3">
+          <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span class="text-xs font-bold text-slate-800 flex-grow">Verra VCS</span>
+            <span class="text-[10px] mono bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold">CONNECTED</span>
+          </div>
+          <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span class="text-xs font-bold text-slate-800 flex-grow">Gold Standard</span>
+            <span class="text-[10px] mono bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold">CONNECTED</span>
+          </div>
+          <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span class="text-xs font-bold text-slate-800 flex-grow">Puro.earth</span>
+            <span class="text-[10px] mono bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold">CONNECTED</span>
+          </div>
+          <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span class="text-xs font-bold text-slate-800 flex-grow">CDB Regional MRV</span>
+            <span class="text-[10px] mono bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold">IN PROGRESS</span>
+          </div>
+          <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span class="text-xs font-bold text-slate-800 flex-grow">Haiti National MRV</span>
+            <span class="text-[10px] mono bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold">IN PROGRESS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NDC Alignment Matrix -->
+    <div class="card p-6">
+      <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+        Country NDC Alignment Matrix
+        <span class="tip-icon" data-tip-title="NDC Alignment" data-tip="Demonstrates how projects directly contribute to each host country's Nationally Determined Contribution under the Paris Agreement. Critical for Article 6 host country authorization.">?</span>
+      </h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="bg-slate-50 text-slate-600 uppercase tracking-wider text-[10px]">
+              <th class="text-left py-3 px-3 font-bold border-b border-slate-200">Country</th>
+              <th class="text-left py-3 px-3 font-bold border-b border-slate-200">NDC Priority</th>
+              <th class="text-left py-3 px-3 font-bold border-b border-slate-200">Project Contribution</th>
+              <th class="text-center py-3 px-3 font-bold border-b border-slate-200">Alignment</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr><td class="py-3 px-3 font-semibold text-slate-800">Haiti</td><td class="py-3 px-3 text-slate-600">47% renewables by 2030 (5.6% biomass)</td><td class="py-3 px-3 text-slate-600">Community biogas to 900 households</td><td class="py-3 px-3 text-center check-pass font-bold">✓ High</td></tr>
+            <tr><td class="py-3 px-3 font-semibold text-slate-800">Jamaica</td><td class="py-3 px-3 text-slate-600">30% renewables by 2030</td><td class="py-3 px-3 text-slate-600">Hospitality waste diversion + biogas</td><td class="py-3 px-3 text-center check-pass font-bold">✓ High</td></tr>
+            <tr><td class="py-3 px-3 font-semibold text-slate-800">Grenada</td><td class="py-3 px-3 text-slate-600">100% renewable electricity by 2030</td><td class="py-3 px-3 text-slate-600">Regional SIDS waste-to-energy</td><td class="py-3 px-3 text-center check-pass font-bold">✓ High</td></tr>
+            <tr><td class="py-3 px-3 font-semibold text-slate-800">Saint Lucia</td><td class="py-3 px-3 text-slate-600">Reduced waste-to-landfill</td><td class="py-3 px-3 text-slate-600">Hospitality biogas potential</td><td class="py-3 px-3 text-center check-pass font-bold">✓ High</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ TAB: IMPACT ═══════════ -->
+  <section id="tab-impact" class="tab-panel hidden fade-in space-y-6">
+
+    <div class="card p-6">
+      <h3 class="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
+        Program Impact Dashboard
+        <span class="tip-icon" data-tip-title="Impact Metrics" data-tip="Aggregated impact metrics across the active pilot portfolio. Reflects community-scale (COSMOS Haiti) and industrial-scale (US partners) contributions combined.">?</span>
+      </h3>
+      <p class="text-xs text-slate-500 mb-5">Real-time aggregation across 5 active pilot facilities · FY2026–2031</p>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="impact-card bg-gradient-to-br from-emerald-50 to-white border-2 border-emerald-200 rounded-xl p-5 text-center">
+          <div class="text-3xl mb-2">🌱</div>
+          <p class="text-2xl font-black text-emerald-700 mono">847K</p>
+          <p class="text-[10px] text-emerald-700 font-bold uppercase tracking-wider mt-1">tCO₂e Avoided</p>
+          <p class="text-[10px] text-slate-500 mt-1">Cumulative to date</p>
+        </div>
+        <div class="impact-card bg-gradient-to-br from-sky-50 to-white border-2 border-sky-200 rounded-xl p-5 text-center">
+          <div class="text-3xl mb-2">🏠</div>
+          <p class="text-2xl font-black text-sky-700 mono">1,240</p>
+          <p class="text-[10px] text-sky-700 font-bold uppercase tracking-wider mt-1">Households Served</p>
+          <p class="text-[10px] text-slate-500 mt-1">Direct clean-energy access</p>
+        </div>
+        <div class="impact-card bg-gradient-to-br from-amber-50 to-white border-2 border-amber-200 rounded-xl p-5 text-center">
+          <div class="text-3xl mb-2">👷</div>
+          <p class="text-2xl font-black text-amber-700 mono">85</p>
+          <p class="text-[10px] text-amber-700 font-bold uppercase tracking-wider mt-1">Green Jobs Created</p>
+          <p class="text-[10px] text-slate-500 mt-1">42% female · 38% youth</p>
+        </div>
+        <div class="impact-card bg-gradient-to-br from-purple-50 to-white border-2 border-purple-200 rounded-xl p-5 text-center">
+          <div class="text-3xl mb-2">🌳</div>
+          <p class="text-2xl font-black text-purple-700 mono">1,850</p>
+          <p class="text-[10px] text-purple-700 font-bold uppercase tracking-wider mt-1">Hectares Protected</p>
+          <p class="text-[10px] text-slate-500 mt-1">Deforestation pressure reduced</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SDG Contributions -->
+    <div class="card p-6">
+      <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+        UN Sustainable Development Goal Contributions
+        <span class="tip-icon" data-tip-title="SDG Mapping" data-tip="Each project activity is mapped to the 17 UN Sustainable Development Goals. Quantified contributions support premium pricing through co-benefit verification.">?</span>
+      </h3>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="flex gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-lg flex-shrink-0">3</div>
+          <div>
+            <div class="text-xs font-bold text-slate-800">Good Health &amp; Well-Being</div>
+            <div class="text-[11px] text-slate-600 mt-1">Reduced household air pollution for 1,240 households</div>
+          </div>
+        </div>
+        <div class="flex gap-3 p-4 bg-sky-50 border border-sky-200 rounded-lg">
+          <div class="w-10 h-10 rounded-lg bg-sky-600 text-white flex items-center justify-center font-black text-lg flex-shrink-0">7</div>
+          <div>
+            <div class="text-xs font-bold text-slate-800">Affordable &amp; Clean Energy</div>
+            <div class="text-[11px] text-slate-600 mt-1">847K MWh clean thermal energy delivered</div>
+          </div>
+        </div>
+        <div class="flex gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div class="w-10 h-10 rounded-lg bg-amber-600 text-white flex items-center justify-center font-black text-lg flex-shrink-0">8</div>
+          <div>
+            <div class="text-xs font-bold text-slate-800">Decent Work &amp; Economic Growth</div>
+            <div class="text-[11px] text-slate-600 mt-1">85 formal jobs with NIS and health insurance</div>
+          </div>
+        </div>
+        <div class="flex gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div class="w-10 h-10 rounded-lg bg-emerald-700 text-white flex items-center justify-center font-black text-lg flex-shrink-0">13</div>
+          <div>
+            <div class="text-xs font-bold text-slate-800">Climate Action</div>
+            <div class="text-[11px] text-slate-600 mt-1">847K tCO₂e verified emission reductions</div>
+          </div>
+        </div>
+        <div class="flex gap-3 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+          <div class="w-10 h-10 rounded-lg bg-purple-600 text-white flex items-center justify-center font-black text-lg flex-shrink-0">15</div>
+          <div>
+            <div class="text-xs font-bold text-slate-800">Life on Land</div>
+            <div class="text-[11px] text-slate-600 mt-1">1,850 hectares of forest pressure reduced</div>
+          </div>
+        </div>
+        <div class="flex gap-3 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+          <div class="w-10 h-10 rounded-lg bg-slate-700 text-white flex items-center justify-center font-black text-lg flex-shrink-0">17</div>
+          <div>
+            <div class="text-xs font-bold text-slate-800">Partnerships for the Goals</div>
+            <div class="text-[11px] text-slate-600 mt-1">5 countries, 3 DFIs, 2 registries integrated</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gender & Community Impact -->
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="card p-6">
+        <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+          Gender Inclusion Metrics
+          <span class="tip-icon" data-tip-title="Gender Impact" data-tip="Gender-disaggregated metrics aligned with GCF Gender Policy (GEN-2). Demonstrates principal-objective commitment to women's economic empowerment.">?</span>
+        </h3>
+        <div class="space-y-3">
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-600">Female workforce</span>
+              <span class="mono font-bold text-emerald-700">42%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded h-2"><div class="h-full bg-emerald-500 rounded" style="width:42%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-600">Female-headed household subscribers</span>
+              <span class="mono font-bold text-emerald-700">48%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded h-2"><div class="h-full bg-emerald-500 rounded" style="width:48%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-600">Female supervisory roles</span>
+              <span class="mono font-bold text-emerald-700">32%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded h-2"><div class="h-full bg-emerald-500 rounded" style="width:32%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-600">Target by 2029</span>
+              <span class="mono font-bold text-sky-700">50%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded h-2"><div class="h-full bg-sky-500 rounded" style="width:50%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-6">
+        <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+          Community Co-Benefits
+          <span class="tip-icon" data-tip-title="Co-Benefits" data-tip="Non-carbon benefits that improve community well-being. Increasingly valued by premium buyers and often formalized as co-benefit premiums of $3–8 per tonne.">?</span>
+        </h3>
+        <div class="space-y-2.5 text-xs">
+          <div class="flex justify-between items-center py-2 border-b border-slate-100">
+            <span class="text-slate-600">Charcoal displaced</span>
+            <span class="mono font-bold text-slate-800">925 t/year</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b border-slate-100">
+            <span class="text-slate-600">Organic waste diverted</span>
+            <span class="mono font-bold text-slate-800">5,400 t/year</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b border-slate-100">
+            <span class="text-slate-600">Cooking time saved</span>
+            <span class="mono font-bold text-slate-800">1,850 hrs/yr/hh</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b border-slate-100">
+            <span class="text-slate-600">Fertilizer produced</span>
+            <span class="mono font-bold text-slate-800">720 t/year</span>
+          </div>
+          <div class="flex justify-between items-center py-2">
+            <span class="text-slate-600">Crop yield uplift</span>
+            <span class="mono font-bold text-emerald-700">+22% (avg)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ TAB: DOCS ═══════════ -->
+  <section id="tab-docs" class="tab-panel hidden fade-in max-w-4xl mx-auto">
+    <div class="card p-8 space-y-6">
+      <div>
+        <div class="text-[10px] mono text-emerald-600 font-bold uppercase tracking-widest mb-2">Document v2.0.0 · November 2026 Pilot</div>
+        <h1 class="text-2xl font-bold mb-2 text-slate-900">GCFT Platform · Technical Integration Guide</h1>
+        <p class="text-sm text-slate-600 leading-relaxed">The GCFT Platform operates an advanced digital Measurement, Reporting, and Verification (dMRV) layer designed to automate emissions auditing for regional green energy providers. By creating a direct data connection between active anaerobic digestion infrastructure and international asset brokerages, the platform eliminates months of institutional validation lag — verifying emission permanence on a continuous, daily cycle.</p>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-bold text-emerald-600 uppercase tracking-widest border-b-2 border-emerald-200 pb-2 mb-3">1 · Pipeline Architecture</h2>
+        <div class="code-light p-5 mono text-[11px] text-emerald-800 leading-loose overflow-x-auto">
+[Facility SCADA / PLC] ──▶ [TLS 1.3 Webhook] ──▶ [GCFT Ingestion Gateway]<br>
+                                                        │<br>
+                                                        ▼<br>
+[Global Monetization Pool] ◀── [Anti-Tamper Ledger] ◀── [IPCC Calc Engine]
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-bold text-emerald-600 uppercase tracking-widest border-b-2 border-emerald-200 pb-2 mb-3">2 · On-Site Telemetry Capture</h2>
+        <ul class="space-y-2 text-sm text-slate-700">
+          <li class="flex gap-3"><span class="text-emerald-600 font-bold">▸</span><span>Gross generated biogas flow rate (m³)</span></li>
+          <li class="flex gap-3"><span class="text-emerald-600 font-bold">▸</span><span>Continuous methane (CH₄) concentration percentage</span></li>
+          <li class="flex gap-3"><span class="text-emerald-600 font-bold">▸</span><span>Real-time thermal or engine destruction efficiency metrics</span></li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-bold text-emerald-600 uppercase tracking-widest border-b-2 border-emerald-200 pb-2 mb-3">3 · Payload Schema</h2>
+        <div class="code-light p-4 overflow-x-auto">
+<pre class="mono text-[11px] text-slate-800 leading-relaxed">{
+  "header": {
+    "api_version": "v1.0.4",
+    "timestamp": "&lt;ISO-8601&gt;",
+    "security_token_hash": "sha256_..."
+  },
+  "facility_profile": {
+    "partner_id": "SARGAS-GRN-01",
+    "legal_entity": "SarGas Limited",
+    "geo_location": "Gros Islet, Saint Lucia Hub"
+  },
+  "telemetry_data": {
+    "raw_biogas_flow_m3": 12500,
+    "ch4_concentration_pct": 62.00,
+    "destruction_efficiency_pct": 98.50
+  },
+  "dmrv_calculated_outputs": {
+    "calculated_daily_tco2e_avoided": 153.04,
+    "verification_protocol": "IPCC-Methodology-2026-MethaneAvoidance"
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ TAB: METHODOLOGY ═══════════ -->
+  <section id="tab-method" class="tab-panel hidden fade-in max-w-4xl mx-auto">
+    <div class="card p-8 space-y-6">
+      <div>
+        <div class="text-[10px] mono text-emerald-600 font-bold uppercase tracking-widest mb-2">Calculation Engine v2.0</div>
+        <h1 class="text-2xl font-bold mb-2 text-slate-900">Methane Avoidance Methodology</h1>
+        <p class="text-sm text-slate-600 leading-relaxed">The dMRV engine applies a four-stage computation to convert raw telemetry into verified carbon asset attributes. All constants are traceable to IPCC AR5 and Gold Standard AMM v1.1 / v2.0 (PAA).</p>
+      </div>
+
+      <div class="space-y-4">
+        <div class="code-light p-5">
+          <div class="text-[10px] mono text-emerald-700 font-bold uppercase tracking-widest mb-2">Stage 1 · CH₄ Volume Destroyed</div>
+          <div class="mono text-sm text-slate-900 font-semibold">V_CH₄ = Flow × CH₄% × Destruction Efficiency</div>
+          <div class="text-[11px] text-slate-500 mt-2 mono">Example: 12,500 × 0.62 × 0.985 = 7,633.75 m³</div>
+        </div>
+
+        <div class="code-light p-5">
+          <div class="text-[10px] mono text-emerald-700 font-bold uppercase tracking-widest mb-2">Stage 2 · Mass Conversion</div>
+          <div class="mono text-sm text-slate-900 font-semibold">m_CH₄ (t) = V_CH₄ × ρ_CH₄</div>
+          <div class="text-[11px] text-slate-500 mt-2 mono">ρ_CH₄ at STP = 0.716 kg/m³ = 0.000716 t/m³</div>
+        </div>
+
+        <div class="code-light p-5">
+          <div class="text-[10px] mono text-emerald-700 font-bold uppercase tracking-widest mb-2">Stage 3 · CO₂e Conversion</div>
+          <div class="mono text-sm text-slate-900 font-semibold">tCO₂e = m_CH₄ × GWP_CH₄</div>
+          <div class="text-[11px] text-slate-500 mt-2 mono">GWP_CH₄ (100-yr, IPCC AR5) = 28</div>
+        </div>
+
+        <div class="metric-glow rounded-xl p-5 border-2">
+          <div class="text-[10px] mono text-emerald-700 font-bold uppercase tracking-widest mb-2">Stage 4 · Monetization</div>
+          <div class="mono text-sm text-emerald-800 font-bold">Revenue = tCO₂e × Credit Price</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-5">
+        <div class="text-[10px] mono text-slate-500 uppercase tracking-widest font-bold mb-3">Reference Standards</div>
+        <ul class="space-y-1.5 text-xs text-slate-700">
+          <li class="flex gap-2"><span class="text-emerald-600 font-bold">▸</span><span>IPCC AR5 (2014) · Global Warming Potential values, 100-year horizon</span></li>
+          <li class="flex gap-2"><span class="text-emerald-600 font-bold">▸</span><span>IPCC 2006 Guidelines · Volume 5, Waste (as amended 2019)</span></li>
+          <li class="flex gap-2"><span class="text-emerald-600 font-bold">▸</span><span>Gold Standard AMM v1.1 / v2.0 (PAA)</span></li>
+          <li class="flex gap-2"><span class="text-emerald-600 font-bold">▸</span><span>CDM AMS-III.D · Methane recovery in animal manure management</span></li>
+          <li class="flex gap-2"><span class="text-emerald-600 font-bold">▸</span><span>ISO 14064-2 · Project-level GHG quantification</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ TAB: GLOSSARY ═══════════ -->
+  <section id="tab-glossary" class="tab-panel hidden fade-in max-w-5xl mx-auto">
+    <div class="card p-8">
+      <div class="mb-6">
+        <div class="text-[10px] mono text-emerald-600 font-bold uppercase tracking-widest mb-2">Reference Dictionary</div>
+        <h1 class="text-2xl font-bold mb-2 text-slate-900">Glossary of Terms</h1>
+        <p class="text-sm text-slate-600">A comprehensive dictionary of carbon markets, climate finance, and dMRV terminology. Search or filter by category.</p>
+      </div>
+
+      <div class="flex flex-wrap gap-3 mb-5">
+        <input type="text" id="glossarySearch" placeholder="Search terms…" class="search-input flex-grow min-w-[240px] bg-white border border-slate-300 rounded-lg py-2.5 pr-3 text-sm glow">
+        <select id="glossaryCategory" class="bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm glow">
+          <option value="all">All Categories</option>
+          <option value="carbon">Carbon Markets</option>
+          <option value="mrv">dMRV &amp; Technology</option>
+          <option value="finance">Climate Finance</option>
+          <option value="policy">Policy &amp; Standards</option>
+          <option value="technical">Technical Operations</option>
+        </select>
+      </div>
+
+      <div id="glossaryList" class="space-y-2 max-h-[640px] overflow-y-auto pr-2"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="bg-white border-t border-slate-200 px-6 py-4 text-center text-[11px] text-slate-400">
+  &copy; 2026 GCFT Platform · dMRV-as-a-Service · Sovereign climate finance validation infrastructure · v2.0.0
+</footer>
+
+<!-- Floating tooltip -->
+<div id="floatingTip"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CONFIGURATION
+   ═══════════════════════════════════════════════════════════ */
+const PARTNERS = {
+  sargas:     { id:'SARGAS-GRN-01', name:'SarGas Limited',       loc:'Gros Islet, Saint Lucia Hub',     flow:12500, ch4:62, eff:98.5 },
+  caribshare: { id:'CARIB-JAM-04',  name:'CaribShare Biogas',    loc:'Montego Bay, Jamaica Facility',   flow:8500,  ch4:60, eff:98.0 },
+  synthica:   { id:'SYNTH-TX-02',   name:'Synthica San Antonio', loc:'Bexar County, Texas Site',        flow:32000, ch4:65, eff:99.0 },
+  archaea:    { id:'ARCH-FW-07',    name:'Archaea Fort Worth',   loc:'Tarrant County, Texas Landfill',  flow:45000, ch4:55, eff:99.2 },
+  cosmos:     { id:'COSMOS-HT-01',  name:'COSMOS Solution',      loc:'Southern Haiti, Community Biogas', flow:2500,  ch4:58, eff:97.5 }
+};
+
+const CONSTANTS = {
+  ch4Density: 0.000716,
+  gwp: 28,
+  price: 25.00,
+  method: 'IPCC-Methodology-2026-MethaneAvoidance',
+  apiVersion: 'v2.0.0'
+};
+
+const SESSION = { count:0, credits:0, revenue:0, intervalId:null };
+
+/* ═══════════════════════════════════════════════════════════
+   TOOLTIP SYSTEM
+   ═══════════════════════════════════════════════════════════ */
+function initTooltips() {
+  const tip = document.getElementById('floatingTip');
+  document.querySelectorAll('[data-tip]').forEach(el => {
+    el.addEventListener('mouseenter', e => {
+      tip.innerHTML = `<div class="tip-title">${el.dataset.tipTitle || 'Guide'}</div><div class="tip-body">${el.dataset.tip}</div>`;
+      tip.classList.add('show');
+    });
+    el.addEventListener('mousemove', e => {
+      const x = Math.min(e.clientX + 16, window.innerWidth - 340);
+      const y = Math.min(e.clientY + 16, window.innerHeight - 200);
+      tip.style.left = x + 'px';
+      tip.style.top = y + 'px';
+    });
+    el.addEventListener('mouseleave', () => tip.classList.remove('show'));
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SANDBOX CALCULATION
+   ═══════════════════════════════════════════════════════════ */
+function calculate() {
+  const flow = parseFloat(document.getElementById('flowInput').value);
+  const ch4  = parseFloat(document.getElementById('ch4Input').value) / 100;
+  const eff  = parseFloat(document.getElementById('effInput').value) / 100;
+
+  document.getElementById('flowVal').textContent = flow.toLocaleString();
+  document.getElementById('ch4Val').textContent  = Math.round(ch4 * 100) + '%';
+  document.getElementById('effVal').textContent  = (eff * 100).toFixed(1) + '%';
+
+  const ch4Vol  = flow * ch4 * eff;
+  const ch4Mass = ch4Vol * CONSTANTS.ch4Density;
+  const tco2e   = ch4Mass * CONSTANTS.gwp;
+  const revenue = tco2e * CONSTANTS.price;
+
+  document.getElementById('ledgerMethane').textContent = Math.round(ch4Vol).toLocaleString() + ' m³';
+  document.getElementById('ledgerCredits').textContent = tco2e.toFixed(2);
+  document.getElementById('ledgerRevenue').textContent = '$' + revenue.toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+  const pct = Math.min(100, (tco2e / 300) * 100);
+  document.getElementById('intensityBar').style.width = pct + '%';
+
+  renderPayload(flow, ch4, eff, tco2e);
+  return { ch4Vol, ch4Mass, tco2e, revenue };
+}
+
+function renderPayload(flow, ch4, eff, tco2e) {
+  const key = document.getElementById('partnerSelect').value;
+  const p   = PARTNERS[key];
+  const payload = {
+    header: {
+      api_version: CONSTANTS.apiVersion,
+      timestamp: new Date().toISOString(),
+      security_token_hash: 'sha256_' + pseudoHash()
+    },
+    facility_profile: { partner_id: p.id, legal_entity: p.name, geo_location: p.loc },
+    telemetry_data: {
+      raw_biogas_flow_m3: parseInt(flow, 10),
+      ch4_concentration_pct: parseFloat((ch4 * 100).toFixed(2)),
+      destruction_efficiency_pct: parseFloat((eff * 100).toFixed(2))
+    },
+    dmrv_calculated_outputs: {
+      calculated_daily_tco2e_avoided: parseFloat(tco2e.toFixed(4)),
+      verification_protocol: CONSTANTS.method
+    }
+  };
+  document.getElementById('jsonPayload').textContent = JSON.stringify(payload, null, 2);
+}
+
+function pseudoHash() {
+  let s = '';
+  const chars = '0123456789abcdef';
+  for (let i = 0; i < 16; i++) s += chars[Math.floor(Math.random() * 16)];
+  return s;
+}
+
+function switchPartner() {
+  const p = PARTNERS[document.getElementById('partnerSelect').value];
+  document.getElementById('flowInput').value = p.flow;
+  document.getElementById('ch4Input').value  = p.ch4;
+  document.getElementById('effInput').value  = p.eff;
+  document.getElementById('partnerIdBadge').textContent  = p.id;
+  document.getElementById('partnerLocBadge').textContent = p.loc.split(',')[0];
+  calculate();
+  log('info', `Partner context switched · ${p.name} (${p.id})`);
+}
+
+function fireWebhook() {
+  const p   = PARTNERS[document.getElementById('partnerSelect').value];
+  const r   = calculate();
+  const tok = pseudoHash().slice(0, 8);
+  log('success', `Outbound webhook received · token=${tok} · verification OK`);
+  log('info',    `Processing telemetry for ${p.name} (${p.id})`);
+  log('ledger',  `Ledger committed: +${r.tco2e.toFixed(2)} tCO₂e · $${r.revenue.toFixed(2)}`);
+  log('success', `Packet signature accepted · written to immutable chain`);
+  SESSION.count++;
+  SESSION.credits += r.tco2e;
+  SESSION.revenue += r.revenue;
+  refreshSession();
+}
+
+function refreshSession() {
+  document.getElementById('cumCount').textContent   = SESSION.count.toLocaleString();
+  document.getElementById('cumCredits').textContent = SESSION.credits.toFixed(2);
+  document.getElementById('cumRevenue').textContent = '$' + SESSION.revenue.toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+function log(level, message) {
+  const el = document.getElementById('terminalConsole');
+  const ts = new Date().toLocaleTimeString('en-GB', { hour12:false });
+  const colours = { success:'text-emerald-700', info:'text-slate-700', ledger:'text-sky-700 font-semibold', warn:'text-amber-700', error:'text-red-700' };
+  const prefixes = { success:'[OK]', info:'[--]', ledger:'[$$]', warn:'[!!]', error:'[XX]' };
+  const line = document.createElement('div');
+  line.className = colours[level] || 'text-slate-600';
+  line.textContent = `[${ts}] ${prefixes[level] || '[--]'} ${message}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function toggleAuto() {
+  const btn = document.getElementById('autoBtn');
+  if (SESSION.intervalId) {
+    clearInterval(SESSION.intervalId);
+    SESSION.intervalId = null;
+    btn.textContent = '▶ Auto';
+    btn.classList.remove('border-emerald-500','text-emerald-700','bg-emerald-50');
+    log('warn', 'Auto-pilot disengaged');
+  } else {
+    SESSION.intervalId = setInterval(fireWebhook, 2500);
+    btn.textContent = '⏸ Stop';
+    btn.classList.add('border-emerald-500','text-emerald-700','bg-emerald-50');
+    log('success', 'Auto-pilot engaged · firing every 2.5s');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INVESTOR SUITE — IRR/NPV/MOIC
+   ═══════════════════════════════════════════════════════════ */
+let cashflowChart = null;
+
+function computeCashflow(capital, growth, margin, price) {
+  const revenue = capital * 0.55; // Year 1 revenue proportional to capital
+  const flows = [-capital];
+  let cum = -capital;
+  let payback = null;
+  for (let y = 1; y <= 7; y++) {
+    const rev = revenue * Math.pow(1 + growth/100, y - 1);
+    const net = rev * (margin/100);
+    flows.push(net);
+    cum += net;
+    if (payback === null && cum >= 0) payback = y;
+  }
+  return { flows, payback };
+}
+
+function irr(flows, guess = 0.15) {
+  let rate = guess;
+  for (let i = 0; i < 100; i++) {
+    let npv = 0, dnpv = 0;
+    for (let t = 0; t < flows.length; t++) {
+      npv  += flows[t] / Math.pow(1 + rate, t);
+      dnpv -= t * flows[t] / Math.pow(1 + rate, t + 1);
+    }
+    const newRate = rate - npv / dnpv;
+    if (Math.abs(newRate - rate) < 1e-7) return newRate;
+    rate = newRate;
+  }
+  return rate;
+}
+
+function npv(flows, rate) {
+  return flows.reduce((acc, f, t) => acc + f / Math.pow(1 + rate, t), 0);
+}
+
+function recalcInvestor() {
+  const capital = parseFloat(document.getElementById('asmCapital').value);
+  const growth  = parseFloat(document.getElementById('asmGrowth').value);
+  const margin  = parseFloat(document.getElementById('asmMargin').value);
+  const price   = parseFloat(document.getElementById('asmPrice').value);
+
+  document.getElementById('asmCapitalVal').textContent = '$' + capital.toFixed(1) + 'M';
+  document.getElementById('asmGrowthVal').textContent  = growth + '%';
+  document.getElementById('asmMarginVal').textContent  = margin + '%';
+  document.getElementById('asmPriceVal').textContent   = '$' + price.toFixed(2);
+
+  // Include carbon revenue uplift scaled by credit price
+  const carbonUplift = (price - 25) * 0.04;
+  const effectiveGrowth = growth + carbonUplift;
+
+  const { flows, payback } = computeCashflow(capital, effectiveGrowth, margin, price);
+
+  const irrVal = irr(flows) * 100;
+  const npvVal = npv(flows, 0.12) / 1000; // in millions
+  const cumReturn = flows.slice(1).reduce((a, b) => a + b, 0);
+  const moic = (cumReturn + capital) / capital;
+
+  document.getElementById('invIRR').textContent = irrVal.toFixed(1) + '%';
+  document.getElementById('invNPV').textContent = (npvVal >= 0 ? '$' : '-$') + Math.abs(npvVal).toFixed(1) + 'M';
+  document.getElementById('invPayback').textContent = payback ? payback + 'y' : '>7y';
+  document.getElementById('invMOIC').textContent = moic.toFixed(2) + '×';
+
+  // Chart
+  const labels = flows.map((_, i) => 'Y' + i);
+  const revLabels = labels.slice(1);
+  const revenues = flows.slice(1).map(f => f * (margin/100 + 1) / 1000);
+  const nets = flows.slice(1).map(f => f / 1000);
+
+  if (cashflowChart) cashflowChart.destroy();
+  const ctx = document.getElementById('chartCashflow');
+  if (!ctx) return;
+  cashflowChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: revLabels,
+      datasets: [
+        {
+          label: 'Revenue ($M)',
+          data: revenues,
+          backgroundColor: '#93c5fd',
+          borderRadius: 6
+        },
+        {
+          label: 'Net Cash Flow ($M)',
+          data: nets,
+          backgroundColor: '#10b981',
+          borderRadius: 6
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 14, boxWidth: 12 } },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          padding: 12,
+          cornerRadius: 8,
+          titleFont: { size: 12, weight: 'bold' },
+          bodyFont: { size: 11 }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: '#e2e8f0' },
+          ticks: { font: { size: 10 }, callback: v => '$' + v + 'M' }
+        },
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GLOSSARY
+   ═══════════════════════════════════════════════════════════ */
+const GLOSSARY = [
+  { term: 'Additionally', cat:'carbon', def:'The principle that a carbon credit represents emission reductions that would not have occurred without the project\'s financial incentive. Demonstrated via regulatory, financial, and common-practice tests.' },
+  { term: 'Article 6.2 (Bilateral Cooperation)', cat:'policy', def:'Paris Agreement mechanism allowing countries to bilaterally transfer Internationally Transferred Mitigation Outcomes (ITMOs). Requires host-country authorization and corresponding adjustment.' },
+  { term: 'Article 6.4 (PACM)', cat:'policy', def:'Paris Agreement Crediting Mechanism — the successor to the CDM. Centralized UNFCCC-supervised carbon crediting for projects in participating countries.' },
+  { term: 'Baseline Scenario', cat:'carbon', def:'The counterfactual emissions trajectory that would occur in the absence of the project. Baseline emissions are subtracted from project emissions to determine emission reductions.' },
+  { term: 'Buffer Pool', cat:'carbon', def:'A reserve of carbon credits set aside to cover potential reversals (e.g., fire, drought, non-permanence). Typically 10–20% of issued credits. GCFT uses 15%.' },
+  { term: 'CCP (Core Carbon Principles)', cat:'policy', def:'ICVCM\'s 10 foundational principles defining high-integrity carbon credits: governance, tracking, transparency, verification, additionality, permanence, quantification, no double counting, SDG benefits, and net-zero transition.' },
+  { term: 'CDB (Caribbean Development Bank)', cat:'finance', def:'Regional multilateral development bank serving 19 Caribbean borrowing member countries. GCF-accredited Direct Access Entity since 2016.' },
+  { term: 'CH₄ (Methane)', cat:'technical', def:'Primary component of biogas. GWP of 28 over 100 years (IPCC AR5). Destroyed via combustion to produce CO₂ (GWP 1), yielding 27-unit CO₂e savings per unit of CH₄.' },
+  { term: 'Corresponding Adjustment', cat:'carbon', def:'An accounting entry by a host country that subtracts transferred ITMOs from its own NDC progress, preventing double counting of emission reductions.' },
+  { term: 'dMRV (Digital MRV)', cat:'mrv', def:'Digital Measurement, Reporting, and Verification — the use of IoT sensors, satellite data, and cloud platforms to continuously verify carbon project performance rather than relying on periodic manual audits.' },
+  { term: 'Downward Adjustment Factor (DAF)', cat:'policy', def:'A fixed discount applied to Gold Standard methodology outputs to increase mitigation ambition over time, aligned with Paris Agreement temperature targets.' },
+  { term: 'ERPA (Emission Reduction Purchase Agreement)', cat:'finance', def:'A contractual agreement for the sale and purchase of carbon credits at a defined future date or upon issuance.' },
+  { term: 'fNRB (fraction of Non-Renewable Biomass)', cat:'carbon', def:'Proportion of biomass fuel that comes from non-renewable sources (deforestation). Used to calculate charcoal-displacement emission reductions.' },
+  { term: 'FPIC (Free, Prior, and Informed Consent)', cat:'policy', def:'A principle from UNDRIP requiring project developers to obtain consent from Indigenous peoples and local communities before project implementation.' },
+  { term: 'GCF (Green Climate Fund)', cat:'finance', def:'Largest global climate finance fund under UNFCCC. Provides grants, concessional loans, equity, and guarantees to developing countries. Headquartered in Incheon, South Korea.' },
+  { term: 'GWP (Global Warming Potential)', cat:'technical', def:'A measure of how much heat a greenhouse gas traps in the atmosphere relative to CO₂ over a specified period (usually 100 years). CH₄ = 28 (IPCC AR5).' },
+  { term: 'ICVCM (Integrity Council for Voluntary Carbon Market)', cat:'policy', def:'Independent governance body for the voluntary carbon market. Publishes the Core Carbon Principles and assesses methodologies for high-integrity alignment.' },
+  { term: 'ITMO (Internationally Transferred Mitigation Outcome)', cat:'carbon', def:'A unit of emission reduction transferred between countries under Article 6.2. Requires host-country authorization and corresponding adjustment.' },
+  { term: 'IPCC (Intergovernmental Panel on Climate Change)', cat:'policy', def:'UN body that assesses climate science. Publishes Assessment Reports (AR5, AR6) and methodological guidelines used as the basis for carbon accounting.' },
+  { term: 'IRR (Internal Rate of Return)', cat:'finance', def:'Discount rate at which the NPV of all future cash flows equals zero. A standard metric for evaluating investment attractiveness.' },
+  { term: 'ITMO', cat:'carbon', def:'Internationally Transferred Mitigation Outcome — see Article 6.2.' },
+  { term: 'LDC (Least Developed Country)', cat:'policy', def:'UN classification for countries with lowest socioeconomic development. Haiti is both an LDC and a SIDS.' },
+  { term: 'MRV (Measurement, Reporting, and Verification)', cat:'mrv', def:'The process by which emission reductions are quantified, documented, and independently verified before credit issuance.' },
+  { term: 'MOIC (Multiple on Invested Capital)', cat:'finance', def:'Total cash returned to investors divided by capital invested. A 3× MOIC indicates the investment tripled in value.' },
+  { term: 'NDA (National Designated Authority)', cat:'policy', def:'National government entity that serves as the primary interface with the GCF. Issues No-Objection Letters for GCF-funded projects.' },
+  { term: 'NDC (Nationally Determined Contribution)', cat:'policy', def:'A country\'s self-defined climate action plan under the Paris Agreement, updated every 5 years.' },
+  { term: 'NPV (Net Present Value)', cat:'finance', def:'Sum of all future cash flows discounted to present value. Positive NPV indicates value creation above the discount rate.' },
+  { term: 'PACM (Paris Agreement Crediting Mechanism)', cat:'policy', def:'See Article 6.4.' },
+  { term: 'Permanence', cat:'carbon', def:'The longevity of emission reductions — ensuring that stored carbon is not released back to the atmosphere. Managed via buffer pools and long monitoring periods.' },
+  { term: 'PPA (Power Purchase Agreement)', cat:'finance', def:'Long-term contract for the sale of electricity at a fixed price. Common financing structure for renewable energy projects.' },
+  { term: 'Registry', cat:'carbon', def:'A centralized database that issues, tracks, transfers, and retires carbon credits. Examples: Verra, Gold Standard, Puro.earth.' },
+  { term: 'RNG (Renewable Natural Gas)', cat:'technical', def:'Biogas upgraded to pipeline-quality methane. Used as a drop-in replacement for fossil natural gas.' },
+  { term: 'SCADA (Supervisory Control and Data Acquisition)', cat:'mrv', def:'Industrial control system used to monitor and control facility operations. Primary source of telemetry data in GCFT integrations.' },
+  { term: 'SDG (Sustainable Development Goal)', cat:'policy', def:'17 goals adopted by the UN in 2015. Carbon projects are increasingly required to demonstrate contributions to specific SDGs.' },
+  { term: 'SIDS (Small Island Developing State)', cat:'policy', def:'UN classification for island nations facing unique climate and development vulnerabilities. Haiti, Jamaica, Grenada, and Saint Lucia are SIDS.' },
+  { term: 'TAM / SAM / SOM', cat:'finance', def:'Total Addressable Market / Serviceable Available Market / Serviceable Obtainable Market — a framework for sizing market opportunity from global to near-term achievable.' },
+  { term: 'VVB (Validation and Verification Body)', cat:'carbon', def:'An accredited third-party organization that validates project design and verifies emission reductions before credit issuance.' },
+  { term: 'Verra (VCS)', cat:'carbon', def:'Largest voluntary carbon market registry. Administers the Verified Carbon Standard (VCS) and other methodologies.' },
+  { term: 'Gold Standard', cat:'carbon', def:'Premium voluntary carbon standard founded by WWF and other NGOs. Known for strict sustainable development requirements and community benefit mandate.' },
+  { term: 'Puro.earth', cat:'carbon', def:'Specialized carbon removal registry focused on durable removals — biochar, carbonated materials, and enhanced weathering.' },
+  { term: 'ICVCM', cat:'policy', def:'See Core Carbon Principles.' },
+  { term: 'Leakage', cat:'carbon', def:'Emissions occurring outside the project boundary that are caused by the project activity. Must be accounted for in the emission reduction calculation.' },
+  { term: 'No-Objection Letter (LoA/NOL)', cat:'policy', def:'Formal letter from a host-country NDA confirming government support for a GCF project or Article 6 activity.' },
+  { term: 'Biodigester', cat:'technical', def:'An airtight vessel where anaerobic digestion of organic matter produces biogas (CH₄ + CO₂) and bio-slurry fertilizer.' },
+  { term: 'Bio-slurry', cat:'technical', def:'Liquid organic fertilizer produced as a byproduct of anaerobic digestion. Rich in nitrogen, phosphorus, and potassium.' },
+  { term: 'Anaerobic Digestion', cat:'technical', def:'Microbial decomposition of organic matter in the absence of oxygen, producing biogas and digestate.' },
+  { term: 'Certified Emission Reduction (CER)', cat:'carbon', def:'A tradable carbon credit issued under the Clean Development Mechanism (CDM). Successor unit under Article 6.4 is called A6.4ER.' },
+  { term: 'Voluntary Carbon Market (VCM)', cat:'carbon', def:'The market in which companies, individuals, and other non-state actors purchase carbon credits voluntarily, outside compliance obligations.' },
+  { term: 'Compliance Carbon Market', cat:'carbon', def:'Regulated carbon markets where entities with mandatory emission reduction obligations trade allowances (e.g., EU ETS, California Cap-and-Trade).' },
+  { term: 'Retirement', cat:'carbon', def:'The permanent removal of a carbon credit from circulation after it has been used to offset an emission. Prevents double counting.' },
+  { term: 'Serial Number', cat:'carbon', def:'A unique identifier assigned to each carbon credit that enables tracking from issuance through retirement.' },
+  { term: 'Tier 1 / Tier 2 / Tier 3 Data', cat:'mrv', def:'IPCC classification of data quality: Tier 1 uses global defaults; Tier 2 uses country-specific values; Tier 3 uses facility-level measurements and models.' },
+  { term: 'Emission Factor', cat:'technical', def:'A coefficient quantifying emissions per unit of activity (e.g., kg CO₂e per kg of fuel combusted, or per kWh of electricity generated).' },
+  { term: 'Threshold', cat:'carbon', def:'A minimum or maximum value that defines eligibility for a methodology. E.g., the 5 tCO₂e/year threshold determining whether IPCC Tier 2 is mandatory.' },
+  { term: 'Methodology', cat:'carbon', def:'A formally approved procedure specifying how a project type calculates baseline emissions, project emissions, leakage, and emission reductions.' },
+  { term: 'Program of Activities (PoA)', cat:'carbon', def:'A framework for registering and expanding multiple similar projects under a single umbrella, reducing transaction costs. Used by Sistema.bio and similar programs.' },
+  { term: 'Technology Readiness Level (TRL)', cat:'mrv', def:'A scale from 1 (basic concept) to 9 (proven in operational environment) used to communicate technology maturity to investors and DFIs.' },
+  { term: 'Direct Access Entity (DAE)', cat:'finance', def:'An institution that has received GCF accreditation and can submit funding proposals directly to the GCF. CDB is a regional DAE.' },
+  { term: 'Accredited Entity (AE)', cat:'finance', def:'A GCF-accredited institution that channels GCF resources to projects and assumes fiduciary, environmental, and social responsibility.' }
+];
+
+function renderGlossary() {
+  const search = document.getElementById('glossarySearch').value.toLowerCase();
+  const cat    = document.getElementById('glossaryCategory').value;
+  const list   = document.getElementById('glossaryList');
+
+  const filtered = GLOSSARY
+    .filter(g => cat === 'all' || g.cat === cat)
+    .filter(g => !search || g.term.toLowerCase().includes(search) || g.def.toLowerCase().includes(search))
+    .sort((a, b) => a.term.localeCompare(b.term));
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="text-center text-slate-400 py-12 text-sm">No matching terms found. Try a different search.</div>';
+    return;
+  }
+
+  const catLabels = { carbon:'Carbon Markets', mrv:'dMRV & Technology', finance:'Climate Finance', policy:'Policy & Standards', technical:'Technical Operations' };
+  const catColors = { carbon:'bg-emerald-50 text-emerald-700', mrv:'bg-sky-50 text-sky-700', finance:'bg-amber-50 text-amber-700', policy:'bg-purple-50 text-purple-700', technical:'bg-slate-100 text-slate-700' };
+
+  list.innerHTML = filtered.map(g => `
+    <div class="glossary-item pl-4 py-3 rounded-r-lg border-l-4 border-transparent">
+      <div class="flex items-start justify-between gap-3 mb-1">
+        <h4 class="text-sm font-bold text-slate-900">${g.term}</h4>
+        <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded whitespace-nowrap ${catColors[g.cat]}">${catLabels[g.cat]}</span>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed">${g.def}</p>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════ */
+function initTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      btn.classList.add('tab-active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.remove('hidden');
+      if (btn.dataset.tab === 'investor' && !cashflowChart) recalcInvestor();
+      if (btn.dataset.tab === 'glossary') renderGlossary();
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   COPY / DOWNLOAD / CLEAR
+   ═══════════════════════════════════════════════════════════ */
+function copyPayload() {
+  const text = document.getElementById('jsonPayload').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    log('success', 'Payload copied to clipboard (' + text.length + ' bytes)');
+  }).catch(() => log('error', 'Clipboard write failed'));
+}
+
+function downloadPayload() {
+  const text = document.getElementById('jsonPayload').textContent;
+  const blob = new Blob([text], { type:'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'gcft-payload-' + Date.now() + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  log('success', 'Payload downloaded');
+}
+
+function clearConsole() {
+  document.getElementById('terminalConsole').innerHTML =
+    '<div class="text-slate-400">[System Reset] Logs cleared · standing by for webhook transmission…</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INITIALIZATION
+   ═══════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  initTabs();
+  initTooltips();
+
+  // Sandbox listeners
+  ['flowInput','ch4Input','effInput'].forEach(id => {
+    document.getElementById(id).addEventListener('input', calculate);
+  });
+  document.getElementById('partnerSelect').addEventListener('change', switchPartner);
+  document.getElementById('webhookBtn').addEventListener('click', fireWebhook);
+  document.getElementById('autoBtn').addEventListener('click', toggleAuto);
+  document.getElementById('copyBtn').addEventListener('click', copyPayload);
+  document.getElementById('downloadBtn').addEventListener('click', downloadPayload);
+  document.getElementById('clearBtn').addEventListener('click', clearConsole);
+
+  // Investor Suite listeners
+  ['asmCapital','asmGrowth','asmMargin','asmPrice'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', recalcInvestor);
+  });
+
+  // Glossary listeners
+  const gs = document.getElementById('glossarySearch');
+  const gc = document.getElementById('glossaryCategory');
+  if (gs) gs.addEventListener('input', renderGlossary);
+  if (gc) gc.addEventListener('change', renderGlossary);
+
+  // Init state
+  switchPartner();
+  calculate();
+
+  log('success', 'dMRV Platform v2.0.0 initialized · API v1.0.4 · gateway live');
+  log('info',    'All stakeholder suites loaded · ready for demonstration');
+  log('ledger',  'ICVCM CCP: 9/10 aligned · Article 6.2: ready · Registries: 3 connected');
+});
+</script>
+</body>
+</html>
